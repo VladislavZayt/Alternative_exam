@@ -215,7 +215,6 @@ class Parser(object):
         for id, ex in enumerate(examples):
             n_words = len(ex['word']) - 1
 
-            # arcs = {(h, t, label)}
             stack = [0]
             buf = [i + 1 for i in range(n_words)]
             arcs = []
@@ -282,13 +281,10 @@ class Parser(object):
         sentences = []
         sentence_id_to_idx = {}
 
-        print(0, example) 
         n_words = len(example['word']) - 1 
         sentence = [j + 1 for j in range(n_words)]
         sentences.append(sentence)
         sentence_id_to_idx[id(sentence)] = 0
-
-        print(sentences)
         model = ModelWrapper(self, [example], sentence_id_to_idx)
 
         dependencies = minibatch_parse(sentences, model, 1)
@@ -428,7 +424,26 @@ def load_and_preprocess_data(reduced=True):
 
     return parser, embeddings_matrix, train_examples, dev_set, test_set,
 
+def load_empty_model():
+    config = Config()
+    train_set = read_conll(os.path.join(config.data_path, config.train_file),
+                           lowercase=config.lowercase)
+    parser = Parser(train_set)
+    word_vectors = {}
+    for line in open(config.embedding_file).readlines():
+        sp = line.strip().split()
+        word_vectors[sp[0]] = [float(x) for x in sp[1:]]
 
+    embeddings_matrix = np.asarray(np.random.normal(0, 0.9, (parser.n_tokens, 50)), dtype='float32')
+
+    for token in parser.tok2id:
+        i = parser.tok2id[token]
+        if token in word_vectors:
+            embeddings_matrix[i] = word_vectors[token]
+        elif token.lower() in word_vectors:
+            embeddings_matrix[i] = word_vectors[token.lower()]
+
+    return parser, embeddings_matrix
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):

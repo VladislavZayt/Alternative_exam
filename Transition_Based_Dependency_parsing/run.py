@@ -10,7 +10,7 @@ import torch
 from tqdm import tqdm
 
 from parser_model import ParserModel
-from utils.parser_utils import minibatches, load_and_preprocess_data, AverageMeter
+from utils.parser_utils import minibatches, load_and_preprocess_data, AverageMeter, load_empty_model
 
 parser = argparse.ArgumentParser(description='Train neural dependency parser in pytorch')
 parser.add_argument('-d', '--debug', action='store_true', help='whether to enter debug mode')
@@ -55,53 +55,38 @@ def train_for_epoch(parser, train_data, dev_data, optimizer, loss_func, batch_si
     print("- dev UAS: {:.2f}".format(dev_UAS * 100.0))
     return dev_UAS
 
-
-if __name__ == "__main__":
+def complete_training():
     debug = args.debug
 
     assert (torch.__version__.split(".") >= ["1", "0", "0"]), "Please install torch version >= 1.0.0"
 
-    
-    
-    print(80 * "=")
-    print("INITIALIZING")
-    print(80 * "=")
-    parser, embeddings, train_data, dev_data, test_data = load_and_preprocess_data(debug)
-    
+    parser, embeddings, train_data, dev_data, test_data= load_and_preprocess_data(debug)
     start = time.time()
-    model = ParserModel(embeddings)
-    parser.model = model
-    print("took {:.2f} seconds\n".format(time.time() - start))
-    
-    test_sent = parser.read_str("The quick brown fox jumps over the lazy dog.")
-    test_sent2 = parser.read_str("She sells seashells by the seashore.")
-    test_sent3 = parser.read_str("The cat sat on the mat while the dog barked loudly.")
+    model = ParserModel(embeddings) 
 
-    tests = [test_sent, test_sent2, test_sent3]
-    print(80 * "=")
-    print("TRAINING")
-    print(80 * "=")
+    parser.model = model
     output_dir = "results/{:%Y%m%d_%H%M%S}/".format(datetime.now())
     output_path = output_dir + "model.weights"
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    train(parser, train_data, dev_data, output_path, batch_size=1024, n_epochs=1, lr=0.0005)
+    train(parser, train_data, dev_data, output_path, batch_size=1024, n_epochs=10, lr=0.0005)
+
+if __name__ == "__main__":
+    parser, embeddings = load_empty_model()
+    start = time.time()
+    model = ParserModel(embeddings)
     
-    for i in range(0, len(tests)):
-        print(tests[i])
-        
-        dependencies = parser.predict(tests[i])
+    relative_path = os.path.join("results", "20250317_214836", "model.weights")
+    model.load_state_dict(torch.load(relative_path, weights_only=True))
+
+    parser.model = model
+    while True:
+        input_sentence = parser.read_str(str(input()))
+
+        dependencies = parser.predict(input_sentence)
 
         for depend in sorted(dependencies[0]):
-            d = parser.devectorize(tests[i])
-            print(d[depend[0]], d[depend[1]])
-
-    input_sentence = parser.read_str(str(input()))
-
-    dependencies = parser.predict(input_sentence)
-
-    for depend in sorted(dependencies[0]):
-            d = parser.devectorize(input_sentence)
-            print(d[depend[0]], d[depend[1]])
+                d = parser.devectorize(input_sentence)
+                print(d[depend[0]], d[depend[1]])
