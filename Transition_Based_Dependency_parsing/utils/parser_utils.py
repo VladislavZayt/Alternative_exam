@@ -239,7 +239,6 @@ class Parser(object):
             else:
                 succ += 1
                 all_instances += instances
-
         return all_instances
 
     def legal_labels(self, stack, buf):

@@ -1,6 +1,5 @@
 from datetime import datetime
 import os
-import pickle
 import math
 import time
 import argparse
@@ -8,6 +7,10 @@ import argparse
 from torch import nn, optim
 import torch
 from tqdm import tqdm
+
+
+import matplotlib.pyplot as plt
+import networkx as nx
 
 from parser_model import ParserModel
 from utils.parser_utils import minibatches, load_and_preprocess_data, AverageMeter, load_empty_model
@@ -73,6 +76,16 @@ def complete_training():
 
     train(parser, train_data, dev_data, output_path, batch_size=1024, n_epochs=10, lr=0.0005)
 
+
+def draw_dependency_tree(dependencies):
+    G = nx.DiGraph()
+    for head, dependent in dependencies:
+        G.add_edge(head, dependent)
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=True, arrows=True, node_size=2000, node_color='lightblue', font_size=10, font_color='black')
+    plt.title("Dependency Tree")
+    plt.show()
+
 if __name__ == "__main__":
     parser, embeddings = load_empty_model()
     start = time.time()
@@ -87,6 +100,9 @@ if __name__ == "__main__":
 
         dependencies = parser.predict(input_sentence)
 
+        d = parser.devectorize(input_sentence)
         for depend in sorted(dependencies[0]):
-                d = parser.devectorize(input_sentence)
                 print(d[depend[0]], d[depend[1]])
+
+        labeled_dependencies = [(d[head], d[dependent]) for head, dependent in dependencies[0]]
+        draw_dependency_tree(labeled_dependencies)

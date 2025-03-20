@@ -37,6 +37,7 @@ def minibatch_parse(sentences, model, batch_size): # анализ предлож
     unfinished_parses = partial_parses[:] # копия partial_parses
     while unfinished_parses:
         transitions = model.predict(unfinished_parses[:batch_size])
+        
         for parse, transition in zip(unfinished_parses[:batch_size], transitions):
             parse.parse_step(transition)
             if len(parse.stack) == 1 and len(parse.buffer) == 0:
